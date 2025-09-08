@@ -25,21 +25,26 @@ export default function Home() {
     } , [auth.isAuthenticated])
 
     useEffect(() => {
-        const loadResumes = async () =>{
-            setLoadingResumes(true);
-
-        const resumes = (await kv.list('resume:*',true)) as KVItem[];
-
-        const parsedResumes = resumes?.map((resume) => (
-            JSON.parse(resume.value) as Resume
-        ))
-
-            console.log(parsedResumes);
-            setResumes(parsedResumes || []);
-            setLoadingResumes(false);
-
+        const loadResumes = async () => {
+            try {
+                setLoadingResumes(true);
+                const list = (await kv.list('resume:*', true)) as KVItem[];
+                const parsedResumes = list?.map((item) => (
+                    JSON.parse(item.value) as Resume
+                ));
+                setResumes(parsedResumes || []);
+            } catch (e) {
+                console.error('Failed to load resumes', e);
+                setResumes([]);
+            } finally {
+                setLoadingResumes(false);
+            }
+        };
+        // trigger initial load and also when auth state becomes authenticated
+        if (auth.isAuthenticated) {
+            loadResumes();
         }
-    }, []);
+    }, [auth.isAuthenticated, kv]);
 
 
   return <main className="bg-[url('/images/bg-main.svg')] bg-cover">
@@ -51,13 +56,12 @@ export default function Home() {
               <h1>Track your Applications & Resume Ratings</h1>
               {!loadingResumes && resumes?.length === 0 ? (
                   <h2>No resumes found. Upload your first resume to get feedback.</h2>
-              ): (
+              ) : (
                   <h2>Review your submissions and check AI-powered feedback</h2>
               )}
-              <h2>Review your submissions and check AI-powered feedback</h2>
           </div>
 
-          {!loadingResumes && (
+          {!loadingResumes && resumes.length === 0 && (
               <div className="flex flex-col items-center justify-center">
                   <img src="/images/resume-scan-2.gif" className="w-[200px]"/>
               </div>
